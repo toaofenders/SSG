@@ -1,7 +1,7 @@
 import os
 from markdown_blocks import markdown_to_html_node
 
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, basepath):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}")
     from_file = open(from_path, 'r')
     markdown_content = from_file.read()
@@ -18,17 +18,16 @@ def generate_page(from_path, template_path, dest_path):
     template = template.replace("{{ Title }}", title)
     template = template.replace("{{ Content }}", html)
 
+    template = template.replace('href="/', f'href="{basepath}')
+    template = template.replace('src="/', f'src="{basepath}')
+
     dest_dir_path = os.path.dirname(dest_path)
     if dest_dir_path != "":
         os.makedirs(dest_dir_path, exist_ok=True)
     to_file = open(dest_path, "w")
     to_file.write(template)
 
-def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
-    # Read the template file
-    with open(template_path, 'r') as template_file:
-        template = template_file.read()
-
+def generate_pages_recursive(dir_path_content, template_path, dest_dir_path, basepath):
     # function to process each directory and file
     def process_directory(current_path, relative_path):
         print(current_path, relative_path)
@@ -43,31 +42,11 @@ def generate_pages_recursive(dir_path_content, template_path, dest_dir_path):
                 # Recursively process the subdirectory
                 process_directory(entry_path, entry_relative_path)
             elif entry.endswith('.md'):
-                 # Read the markdown file
-                with open(entry_path, 'r') as md_file:
-                    markdown_content = md_file.read()
-
-                node = markdown_to_html_node(markdown_content)
-                html = node.to_html()
-                #print(f"html: {html}")
-                # Confirm HTML is correct before the replacement step
-                #print("Converted HTML Before Replacement:", html)
-
-                # Ensure template contains the correct placeholder
-                #print("Template Before Replacement:", template)
-
-                # Check if the placeholder `{{ content }}` is present
-                if '{{ content }}' not in template:
-                    print("Placeholder not found!")
-
-                # Replace the placeholder in the template
-                html_content = template.replace('{{ Content }}', html)
-                # Check the final HTML content post-replacement
-                #print("Final HTML Content After Replacement:", html_content)
-                # Write the HTML file to the destination directory
+                # Determine the destination HTML file path
                 html_file_path = os.path.join(dest_dir_path, entry_relative_path.replace('.md', '.html'))
-                with open(html_file_path, 'w') as html_file:
-                    html_file.write(html_content)
+                
+                # Use generate_page to handle the conversion and writing
+                generate_page(entry_path, template_path, html_file_path, basepath)
 
     # Start processing from the root content directory
     process_directory(dir_path_content, '')
